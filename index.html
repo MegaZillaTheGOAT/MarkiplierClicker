@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Markey Clicker</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  width:100%; height:100vh; display:flex; flex-direction:column; align-items:center;
+  font-family:'Courier New', monospace; color:white;
+  background: url('textures/background.png') no-repeat center center fixed;
+  background-size: cover; padding-top:20px; overflow:hidden;
+}
+
+#markiplier {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none; /* disable iOS menu */
+  touch-action: manipulation;   /* prevent default gestures */
+  -webkit-tap-highlight-color: transparent; /* remove tap highlight on mobile */
+}
+
+#counter { font-size:1.6em; margin-bottom:10px; text-shadow:2px 2px 4px #000; }
+#prestigeBar { display:flex; gap:10px; align-items:center; margin-bottom:10px; padding:6px 10px; background:rgba(0,0,0,0.6); border-radius:8px; }
+#prestigeBtn { background:#400; color:#f66; border:1px solid #800; padding:4px 10px; cursor:pointer; border-radius:4px; }
+#prestigeCost { font-size:0.9em; color:#ff0; }
+#markiplier { cursor:pointer; max-width:25%; margin:10px 0; transition:transform 0.1s; }
+#markiplier:active { transform:scale(0.95); }
+#upgrades { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:90%; max-height:40vh; overflow-y:auto; padding:10px; background:rgba(0,0,0,0.4); border-radius:10px; }
+.upgrade-btn { background:rgba(10,10,20,0.8); border:1px solid #333; padding:6px 10px; font-family:monospace; font-size:0.8em; min-width:150px; text-align:left; border-radius:4px; cursor:not-allowed; opacity:0.6; }
+.upgrade-btn.buyable { cursor:pointer; opacity:1; box-shadow:0 0 6px currentColor; }
+#blackout { position:fixed; inset:0; background:black; display:none; z-index:999; }
+#audioPlayer { display:none; }
+</style>
+</head>
+<body>
+
+<div id="counter">0 Markeys</div>
+
+<div id="prestigeBar">
+  <span id="prestigeInfo">Prestige: 0 (x1.00)</span>
+  <button id="prestigeBtn">PRESTIGE</button>
+  <span id="prestigeCost"></span>
+</div>
+
+<img id="markiplier" src="textures/clicker.png" alt="Click Me">
+
+<div id="upgrades"></div>
+<div id="blackout"></div>
+
+<!-- LOCAL AUDIO -->
+<audio id="clickSound" preload="auto">
+  <source src="audio/click.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="upgradeSound" preload="auto">
+  <source src="audio/upgrade.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="bgMusic" preload="auto" loop>
+  <source src="audio/bgmusic.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ======= GAME STATE ======= */
+let markeys=0, clickPower=1, prestigePoints=0, prestigeMultiplier=1, corrupted=false, JX1DX1=false;
+const MIN_PRESTIGE=1000000;
+
+/* ======= DOM ======= */
+const counter = document.getElementById('counter');
+const markiplier = document.getElementById('markiplier');
+const upgradesDiv = document.getElementById('upgrades');
+const prestigeInfo = document.getElementById('prestigeInfo');
+const prestigeBtn = document.getElementById('prestigeBtn');
+const prestigeCostEl = document.getElementById('prestigeCost');
+const blackout = document.getElementById('blackout');
+markiplier.addEventListener('contextmenu', e => e.preventDefault());
+
+const clickSound = document.getElementById('clickSound');
+const upgradeSound = document.getElementById('upgradeSound');
+const bgMusic = document.getElementById('bgMusic');
+bgMusic.volume = 0.25; // very quiet background
+let bgStarted = false;
+document.body.addEventListener('click', () => {
+  if (!bgStarted) {
+    bgMusic.play().catch(()=>{});
+    bgStarted = true;
+  }
+}, { once: true });
+
+/* ======= NAME PARTS ======= */
+const prefixes = [
+  "Basic","Quantum","Neural","Void","Digital","Ghost","Cyber","Encrypted",
+  "Dark","Omega","Virtual","Fractured","Recursive","Obsidian","Prime",
+  "Synthetic","Hyper","Alpha","Beta","Gamma","Delta","Eternal","Infinite",
+  "Reactive","Adaptive","Chaotic","Silent","Shadow","Crimson","Azure","Titan",
+  "Omega","Exotic","Luminous","Corrupted","Spectral","Binary","Thermal","Null",
+  "Primal","Hardened","Volatile","Compressed","Expanded","Decentralized",
+  "Mirrored","Stealth","Encrypted","Classified","Legacy","Forbidden"
+];
+
+const nouns = [
+  "Click","Core","Node","Pulse","Glitch","Kernel","Thread","Cipher","Payload",
+  "Stack","Shard","Probe","Injector","Snapshot","Signal","Loop","Hack","Exploit",
+  "Process","Daemon","Vector","Stream","Cache","Index","Routine","Channel",
+  "Register","Scheduler","Interrupt","Bus","Topology","Pointer","Reference",
+  "Segment","Partition","Cluster","Replica","Beacon","Scanner","Listener",
+  "Emitter","Decoder","Encoder","Transmitter","Receiver","Sandbox","Context",
+  "Instance","Checkpoint","Trace","Signature","Blueprint","Schema","Manifest"
+];
+
+const suffixes = [
+  "Module","Engine","Protocol","Matrix","Driver","Entity","Framework","Gateway",
+  "Controller","Executor","Observer","Interface","Subsystem","Compiler","Injector",
+  "Resolver","Assembler","Orchestrator","Daemon","Validator","Handler","Mapper",
+  "Bridge","Monitor","Pipeline","Scheduler","Dispatcher","Coordinator","Supervisor",
+  "Watcher","Service","Endpoint","Adapter","Wrapper","Facade","Abstraction",
+  "Layer","Shell","Container","Node","Operator","Directive","Instruction",
+  "Routine","Sequence","Flow","Graph","Model","Profile","Constructor","Analyzer",
+  "Generator","Emitter","Accumulator"
+];
+
+/* ======= RARITY BY COST ======= */
+function rarityForCost(cost){
+  if(cost<100) return {name:"Common", color:"#aaa", multiplier:0};
+  if(cost<1000) return {name:"Uncommon", color:"#0f0", multiplier:0.25};
+  if(cost<10000) return {name:"Rare", color:"#39f", multiplier:0.5};
+  if(cost<100000) return {name:"Epic", color:"#a0f", multiplier:1};
+  if(cost<1000000) return {name:"Legendary", color:"#fa0", multiplier:2.5};
+  if(cost<10000000) return {name:"Corrupt", color:"#f0f", multiplier:5};
+  if(cost<100000000) return {name:"Unity", color:"#adbce6", multiplier:10};
+  return {name:"Mythic", color:"#f00", multiplier:25};
+}
+
+/* ======= PRESTIGE REQUIREMENTS ======= */
+function prestigeRequiredForCost(cost){
+  if(cost<10000) return 0;
+  if(cost<100000) return 1;
+  if(cost<1000000) return 2;
+  if(cost<10000000) return 3;
+  if(cost<100000000) return 4;
+  return 5;
+}
+
+/* ======= UPGRADES ======= */
+const upgrades = [];
+const BASE_COST = 10, COST_GROWTH = 1.05; // 5% per upgrade
+function pick(arr, seed) { return arr[seed % arr.length]; }
+
+for (let i = 0; i < 500; i++) {
+  const baseCost = Math.floor(BASE_COST * Math.pow(COST_GROWTH, i / 1.5));
+  const rarity = rarityForCost(baseCost);
+  const requiredPrestige = baseCost >= 1_000_000 ? 1 : 0;
+  upgrades.push({
+    name: pick(prefixes,i*7)+" "+pick(nouns,i*13)+" "+pick(suffixes,i*29),
+    baseCost,
+    cost: baseCost,
+    power: Math.max(1, Math.floor(baseCost * 0.25) * rarity.multiplier),
+    rarity,
+    requiredPrestige
+  });
+}
+
+/* ======= UI ======= */
+function getPrestigeCost(){ return MIN_PRESTIGE; }
+
+function updateUI(){
+  counter.textContent = `${markeys.toLocaleString(undefined, {maximumFractionDigits:2})} Markeys | Power ${parseFloat(clickPower.toFixed(2))}`;
+  prestigeInfo.textContent = `Prestige: ${prestigePoints} (x${prestigeMultiplier.toFixed(2)})`;
+  prestigeCostEl.textContent = `(Requires ${getPrestigeCost().toLocaleString()} Markeys)`;
+  [...upgradesDiv.children].forEach((b,i)=>{
+    const u = upgrades[i];
+    b.classList.toggle('buyable', markeys>=u.cost && !corrupted && prestigePoints>=u.requiredPrestige);
+  });
+}
+
+function renderUpgrades(){
+  upgradesDiv.innerHTML='';
+  upgrades.forEach((u,i)=>{
+    const b=document.createElement('button');
+    b.className='upgrade-btn';
+    b.style.color=u.rarity.color;
+    b.style.borderColor=u.rarity.color;
+    b.innerHTML=`<small>${u.name}</small><br><strong>${u.cost.toLocaleString()}</strong><br><small>${u.rarity.name}</small>`;
+    b.onclick = ()=>buyUpgrade(i);
+    upgradesDiv.appendChild(b);
+  });
+}
+
+/* ======= GAMEPLAY ======= */
+let clickCooldown = false;           // Add cooldown state
+const CLICK_COOLDOWN_MS = 200;       // cooldown between clicks
+
+function buyUpgrade(i){
+  const u=upgrades[i];
+  if(markeys<u.cost || corrupted || prestigePoints<u.requiredPrestige) return;
+  markeys-=u.cost;
+  clickPower+=u.power*prestigeMultiplier;
+  upgradeSound.currentTime = 0; upgradeSound.play();
+  updateUI();
+}
+
+markiplier.onclick = ()=>{
+  if(corrupted || clickCooldown) return;  // prevent spamming
+
+  // start cooldown and disable clicks visually
+  clickCooldown = true;
+  markiplier.style.pointerEvents = 'none';  // prevents wobble/scale
+
+  markeys += clickPower;
+  clickSound.currentTime = 0;
+  clickSound.play();
+  updateUI();
+
+  // reset cooldown and re-enable clicking
+  markiplier.style.opacity = '0.6';
+  setTimeout(()=>{
+    clickCooldown = false;
+    markiplier.style.pointerEvents = 'auto'; // re-enable clicks
+    markiplier.style.opacity = '1';
+  }, CLICK_COOLDOWN_MS);
+};
+
+/* ======= PRESTIGE ======= */
+prestigeBtn.onclick = ()=>{
+  const cost=getPrestigeCost();
+  if(markeys<cost) return;
+  prestigePoints += Math.floor(Math.sqrt(markeys/cost));
+  prestigeMultiplier = 1 + prestigePoints*0.05;
+  markeys=0; clickPower=prestigeMultiplier;
+  upgrades.forEach(u=>u.cost=u.baseCost);
+  updateUI();
+};
+
+/* ======= INIT ======= */
+renderUpgrades();
+updateUI();
+</script>
+</body>
+</html>
