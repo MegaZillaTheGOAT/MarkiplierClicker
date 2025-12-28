@@ -124,7 +124,7 @@ const suffixes = [
 
 /* ======= RARITY BY COST ======= */
 function rarityForCost(cost){
-  if(cost<100) return {name:"Common", color:"#aaa", multiplier:0};
+  if(cost<50) return {name:"Common", color:"#aaa", multiplier:0.05};
   if(cost<1000) return {name:"Uncommon", color:"#0f0", multiplier:0.25};
   if(cost<10000) return {name:"Rare", color:"#39f", multiplier:0.5};
   if(cost<100000) return {name:"Epic", color:"#a0f", multiplier:1};
@@ -157,7 +157,7 @@ for (let i = 0; i < 500; i++) {
     name: pick(prefixes,i*7)+" "+pick(nouns,i*13)+" "+pick(suffixes,i*29),
     baseCost,
     cost: baseCost,
-    power: Math.max(1, Math.floor(baseCost * 0.25) * rarity.multiplier),
+    power: Math.max(1, Math.floor(baseCost * 0.25) + rarity.multiplier),
     rarity,
     requiredPrestige
   });
