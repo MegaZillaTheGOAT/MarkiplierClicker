@@ -152,7 +152,7 @@ function pick(arr, seed) { return arr[seed % arr.length]; }
 for (let i = 0; i < 500; i++) {
   const baseCost = Math.floor(BASE_COST * Math.pow(COST_GROWTH, i / 1.5));
   const rarity = rarityForCost(baseCost);
-  const requiredPrestige = baseCost >= 1_000_000 ? 1 : 0;
+  const requiredPrestige = prestigeRequiredForCost(baseCost);
   upgrades.push({
     name: pick(prefixes,i*7)+" "+pick(nouns,i*13)+" "+pick(suffixes,i*29),
     baseCost,
