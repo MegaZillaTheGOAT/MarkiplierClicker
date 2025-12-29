@@ -228,7 +228,7 @@ prestigeBtn.onclick = ()=>{
   const cost=getPrestigeCost();
   if(markeys<cost) return;
   prestigePoints += Math.floor(Math.sqrt(markeys/cost));
-  prestigeMultiplier = 1 + prestigePoints*0.05;
+  prestigeMultiplier = 1 + prestigePoints*1.5;
   markeys=0; clickPower=prestigeMultiplier;
   upgrades.forEach(u=>u.cost=u.baseCost);
   updateUI();
