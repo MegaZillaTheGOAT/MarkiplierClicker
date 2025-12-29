@@ -136,11 +136,11 @@ function rarityForCost(cost){
 
 /* ======= PRESTIGE REQUIREMENTS ======= */
 function prestigeRequiredForCost(cost){
-  if(cost<10000) return 0;
-  if(cost<100000) return 1;
-  if(cost<1000000) return 2;
-  if(cost<10000000) return 3;
-  if(cost<100000000) return 4;
+  if(cost<100000) return 0;
+  if(cost<1000000) return 1;
+  if(cost<10000000) return 2;
+  if(cost<100000000) return 3;
+  if(cost<1000000000) return 4;
   return 5;
 }
 
