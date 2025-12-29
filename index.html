@@ -146,11 +146,11 @@ function prestigeRequiredForCost(cost){
 
 /* ======= UPGRADES ======= */
 const upgrades = [];
-const BASE_COST = 10, COST_GROWTH = 1.05; // 5% per upgrade
+const BASE_COST = 10, COST_GROWTH = 1.07; // 5% per upgrade
 function pick(arr, seed) { return arr[seed % arr.length]; }
 
-for (let i = 0; i < 500; i++) {
-  const baseCost = Math.floor(BASE_COST * Math.pow(COST_GROWTH, i / 1.5));
+for (let i = 0; i < 700; i++) {
+  const baseCost = Math.floor(BASE_COST * Math.pow(COST_GROWTH, i / 1.2));
   const rarity = rarityForCost(baseCost);
   const requiredPrestige = prestigeRequiredForCost(baseCost);
   upgrades.push({
@@ -228,7 +228,7 @@ prestigeBtn.onclick = ()=>{
   const cost=getPrestigeCost();
   if(markeys<cost) return;
   prestigePoints += Math.floor(Math.sqrt(markeys/cost));
-  prestigeMultiplier = 1 + prestigePoints*1.5;
+  prestigeMultiplier = 1 + prestigePoints*0.25;
   markeys=0; clickPower=prestigeMultiplier;
   upgrades.forEach(u=>u.cost=u.baseCost);
   updateUI();
@@ -239,4 +239,5 @@ renderUpgrades();
 updateUI();
 </script>
 </body>
+
 </html>
